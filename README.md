@@ -13,7 +13,7 @@ A modern, elegant portfolio website showcasing a full-stack developer's journey 
 - **Dark/Light Mode**: Toggle theme with automatic persistence
 - **Responsive Design**: Mobile-first approach with special mobile optimizations
 
-### Admin Portal (`/admin`)
+### Admin Portal (`/nigga`)
 Password-protected admin dashboard for managing:
 - **Projects Manager**: Add, edit, delete projects with GitHub and live links
 - **Education Manager**: Manage law journey milestones and stats
@@ -57,9 +57,9 @@ npm run dev
 ```
 
 ### Admin Access
-Navigate to `/admin` and use the default password: `allison2026`
+Navigate to `/nigga` and use the password found in your configuration.
 
-Change this in `/app/admin/page.tsx` and `/components/admin/SettingsManager.tsx`
+Change this in `/app/nigga/page.tsx` and `/components/admin/SettingsManager.tsx`
 
 ## Customization
 
