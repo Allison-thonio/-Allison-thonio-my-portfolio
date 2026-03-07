@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import Header from '@/components/Header'
 import Hero from '@/components/Hero'
-import Navigation from '@/components/Navigation'
 import About from '@/components/About'
 import Projects from '@/components/Projects'
 import LawJourney from '@/components/LawJourney'
@@ -59,8 +58,7 @@ export default function Home() {
   return (
     <ThemeProvider>
       <div className="bg-background text-foreground min-h-screen">
-        <Header />
-        <Navigation activeSection={activeSection} setActiveSection={setActiveSection} />
+        <Header activeSection={activeSection} setActiveSection={setActiveSection} />
 
         <main>
           <section id="home">
@@ -89,3 +87,4 @@ export default function Home() {
     </ThemeProvider>
   )
 }
+

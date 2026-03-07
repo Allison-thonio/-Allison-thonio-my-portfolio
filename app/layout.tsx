@@ -10,7 +10,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Allison Anthonio | Full Stack Developer & Law Student',
   description: 'Portfolio of Allison Anthonio - Full Stack Web Developer, Law Student (300L), and Accounting Student. Discover my development projects and legal journey.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
