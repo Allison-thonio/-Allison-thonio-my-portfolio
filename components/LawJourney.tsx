@@ -1,11 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { db } from '@/lib/firebase'
+import { doc, getDoc } from 'firebase/firestore'
+import { Loader2 } from 'lucide-react'
 
 export default function LawJourney() {
   const [expandedId, setExpandedId] = useState<number | null>(0)
+  const [milestones, setMilestones] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const milestones = [
+  const defaultMilestones = [
     {
       id: 0,
       year: '2022',
@@ -51,6 +56,40 @@ export default function LawJourney() {
     { icon: '💡', title: 'Innovation Focus', description: 'Developing legal solutions through coding' },
   ]
 
+  useEffect(() => {
+    const fetchTimeline = async () => {
+      try {
+        const docRef = doc(db, 'portfolio', 'education')
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists() && docSnap.data().timeline) {
+          const data = docSnap.data().timeline
+          if (Array.isArray(data) && data.length > 0) {
+            // Map the education timeline to the format expected by the UI
+            const formattedMilestones = data.map((item: any, idx: number) => ({
+              id: idx,
+              year: item.year?.toString() || 'Unknown',
+              title: item.milestone || item.title || 'Milestone',
+              description: item.description || '',
+              image: item.image || 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=300&fit=crop',
+              icon: item.icon || '🎓',
+              level: item.level || '300L'
+            }))
+            setMilestones(formattedMilestones)
+            return
+          }
+        }
+        // Fallback to default if not found or empty
+        setMilestones(defaultMilestones)
+      } catch (error) {
+        console.error("Error fetching timeline:", error)
+        setMilestones(defaultMilestones)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchTimeline()
+  }, [])
+
   return (
     <section className="py-20 md:py-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto lg:ml-48">
       <div className="space-y-12">
@@ -62,6 +101,12 @@ export default function LawJourney() {
             My path through legal education and how it shapes my perspective on technology and society.
           </p>
         </div>
+        
+        {isLoading && (
+          <div className="text-foreground/50 flex py-4 items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading Law Journey...
+          </div>
+        )}
 
         {/* Timeline */}
         <div className="space-y-6">

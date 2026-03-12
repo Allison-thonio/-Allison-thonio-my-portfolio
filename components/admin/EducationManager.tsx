@@ -1,10 +1,10 @@
 'use client'
 
-import React from "react"
-
-import { useState } from 'react'
+import React, { useState, useEffect } from "react"
 import { experience } from '@/lib/projects'
-import { Plus, Edit2, Trash2 } from 'lucide-react'
+import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react'
+import { db } from '@/lib/firebase'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 
 interface EducationEntry {
   year: number
@@ -23,6 +23,28 @@ export default function EducationManager() {
     description: '',
   })
   const [showForm, setShowForm] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    const fetchTimeline = async () => {
+      try {
+        const docRef = doc(db, 'portfolio', 'education')
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists()) {
+           const data = docSnap.data().timeline
+           if (data && Array.isArray(data)) {
+             setTimeline(data)
+           }
+        }
+      } catch (error) {
+        console.error("Error fetching education:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchTimeline()
+  }, [])
 
   const handleEdit = (index: number) => {
     setEditingIndex(index)
@@ -30,26 +52,50 @@ export default function EducationManager() {
     setShowForm(true)
   }
 
-  const handleDelete = (index: number) => {
-    setTimeline(timeline.filter((_, i) => i !== index))
+  const handleDelete = async (index: number) => {
+    if (!confirm("Are you sure you want to delete this milestone?")) return
+    setIsSaving(true)
+    try {
+      const newTimeline = timeline.filter((_, i) => i !== index)
+      await setDoc(doc(db, 'portfolio', 'education'), { timeline: newTimeline })
+      setTimeline(newTimeline)
+    } catch (error) {
+      console.error("Error deleting milestone:", error)
+      alert("Failed to delete milestone")
+    }
+    setIsSaving(false)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (editingIndex !== null) {
-      const newTimeline = [...timeline]
-      newTimeline[editingIndex] = formData
+    setIsSaving(true)
+    try {
+      let newTimeline: EducationEntry[]
+      if (editingIndex !== null) {
+        newTimeline = [...timeline]
+        newTimeline[editingIndex] = formData
+      } else {
+        newTimeline = [...timeline, formData]
+      }
+      await setDoc(doc(db, 'portfolio', 'education'), { timeline: newTimeline })
       setTimeline(newTimeline)
-    } else {
-      setTimeline([...timeline, formData])
+      setShowForm(false)
+      setEditingIndex(null)
+      setFormData({ year: 0, level: '', milestone: '', description: '' })
+    } catch (error) {
+      console.error("Error saving milestone:", error)
+      alert("Failed to save milestone")
     }
-    setShowForm(false)
-    setEditingIndex(null)
-    setFormData({ year: 0, level: '', milestone: '', description: '' })
+    setIsSaving(false)
   }
 
   return (
     <div className="space-y-6">
+      {isLoading && (
+        <div className="text-foreground/50 flex py-4 items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading Education...
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-foreground">Law Journey Timeline</h2>
@@ -132,12 +178,15 @@ export default function EducationManager() {
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="px-6 py-2 bg-accent text-primary rounded-lg hover:opacity-90 transition-opacity font-medium"
+                disabled={isSaving}
+                className="px-6 py-2 bg-accent text-primary rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center gap-2"
               >
+                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {editingIndex !== null ? 'Update' : 'Add'} Milestone
               </button>
               <button
                 type="button"
+                disabled={isSaving}
                 onClick={() => {
                   setShowForm(false)
                   setEditingIndex(null)

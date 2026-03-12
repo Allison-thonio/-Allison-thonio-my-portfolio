@@ -1,19 +1,46 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { siteConfig } from '@/lib/projects'
-import { Upload, Link as LinkIcon, Trash2, Plus, Image as ImageIcon } from 'lucide-react'
+import { Upload, Link as LinkIcon, Trash2, Plus, Image as ImageIcon, Loader2 } from 'lucide-react'
+import { db, storage } from '@/lib/firebase'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 export default function HeroManager() {
     const [config, setConfig] = useState(siteConfig.hero)
     const [saved, setSaved] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+    const [isUploading, setIsUploading] = useState<{main: boolean, [key: number]: boolean}>({main: false})
+    const [isLoading, setIsLoading] = useState(true)
 
-    const handleUpdate = () => {
-        // In a real app, this would save to a database
-        // For now, we update the local siteConfig temporarily
-        Object.assign(siteConfig.hero, config)
-        setSaved(true)
-        setTimeout(() => setSaved(false), 3000)
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const docRef = doc(db, 'portfolio', 'hero')
+                const docSnap = await getDoc(docRef)
+                if (docSnap.exists()) {
+                    setConfig(docSnap.data() as typeof siteConfig.hero)
+                }
+            } catch (error) {
+                console.error("Error fetching hero config:", error)
+            } finally {
+                setIsLoading(false)
+            }
+        }
+        fetchConfig()
+    }, [])
+
+    const handleUpdate = async () => {
+        setIsSaving(true)
+        try {
+            await setDoc(doc(db, 'portfolio', 'hero'), config)
+            setSaved(true)
+            setTimeout(() => setSaved(false), 3000)
+        } catch (error) {
+            console.error("Error saving to Firestore:", error)
+        }
+        setIsSaving(false)
     }
 
     const handleFeaturedImageChange = (index: number, url: string) => {
@@ -22,21 +49,37 @@ export default function HeroManager() {
         setConfig({ ...config, featuredImages: newFeatured })
     }
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, target: 'main' | number) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'main' | number) => {
         const file = e.target.files?.[0]
         if (file) {
-            const reader = new FileReader()
-            reader.onload = (ev) => {
-                const result = ev.target?.result as string
+            if (target === 'main') {
+               setIsUploading(prev => ({...prev, main: true}))
+            } else {
+               setIsUploading(prev => ({...prev, [target]: true}))
+            }
+            
+            try {
+                const storageRef = ref(storage, `hero/${file.name}-${Date.now()}`)
+                await uploadBytes(storageRef, file)
+                const url = await getDownloadURL(storageRef)
+                
                 if (target === 'main') {
-                    setConfig({ ...config, mainImage: result })
+                    setConfig({ ...config, mainImage: url })
+                    setIsUploading(prev => ({...prev, main: false}))
                 } else {
                     const newFeatured = [...config.featuredImages]
-                    newFeatured[target] = result
+                    newFeatured[target] = url
                     setConfig({ ...config, featuredImages: newFeatured })
+                    setIsUploading(prev => ({...prev, [target]: false}))
+                }
+            } catch (error) {
+                console.error("Error uploading image:", error)
+                if (target === 'main') {
+                   setIsUploading(prev => ({...prev, main: false}))
+                } else {
+                   setIsUploading(prev => ({...prev, [target]: false}))
                 }
             }
-            reader.readAsDataURL(file)
         }
     }
 
@@ -50,6 +93,10 @@ export default function HeroManager() {
     const removeFeaturedImage = (index: number) => {
         const newFeatured = config.featuredImages.filter((_, i) => i !== index)
         setConfig({ ...config, featuredImages: newFeatured })
+    }
+
+    if (isLoading) {
+        return <div className="p-8 flex items-center justify-center text-foreground/50">Loading config...</div>
     }
 
     return (
@@ -77,11 +124,18 @@ export default function HeroManager() {
                             </div>
                         )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <label className="cursor-pointer bg-accent text-primary px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:scale-105 transition-transform">
-                                <Upload className="w-4 h-4" />
-                                Replace Photo
-                                <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'main')} />
-                            </label>
+                            {isUploading.main ? (
+                                <div className="bg-accent text-primary px-4 py-2 rounded-lg font-bold flex items-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Uploading...
+                                </div>
+                            ) : (
+                                <label className="cursor-pointer bg-accent text-primary px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:scale-105 transition-transform">
+                                    <Upload className="w-4 h-4" />
+                                    Replace Photo
+                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'main')} disabled={isUploading.main} />
+                                </label>
+                            )}
                         </div>
                     </div>
 
@@ -127,8 +181,14 @@ export default function HeroManager() {
                                         <div className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-accent/20 group-hover:border-accent transition-colors">
                                             <img src={img || '/placeholder.svg'} className="w-full h-full object-cover" />
                                             <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                                                <Upload className="w-4 h-4 text-white" />
-                                                <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, i)} />
+                                                {isUploading[i] ? (
+                                                    <Loader2 className="w-4 h-4 text-white animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <Upload className="w-4 h-4 text-white" />
+                                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, i)} disabled={isUploading[i]} />
+                                                    </>
+                                                )}
                                             </label>
                                         </div>
                                         <div className="flex-1 space-y-2">
@@ -182,9 +242,11 @@ export default function HeroManager() {
                 )}
                 <button
                     onClick={handleUpdate}
-                    className="px-10 py-4 bg-accent text-primary rounded-2xl font-black shadow-[0_0_20px_rgba(var(--accent),0.3)] hover:shadow-[0_0_30px_rgba(var(--accent),0.5)] transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest text-sm"
+                    disabled={isSaving}
+                    className="px-10 py-4 bg-accent text-primary rounded-2xl font-black shadow-[0_0_20px_rgba(var(--accent),0.3)] hover:shadow-[0_0_30px_rgba(var(--accent),0.5)] transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest text-sm flex items-center gap-2 disabled:opacity-70 disabled:hover:scale-100"
                 >
-                    Save Portfolio
+                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                    {isSaving ? 'Saving...' : 'Save Portfolio'}
                 </button>
             </div>
         </div>

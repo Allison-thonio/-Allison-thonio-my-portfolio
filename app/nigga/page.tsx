@@ -1,7 +1,6 @@
 'use client'
 
 import React from "react"
-
 import { useState, useEffect } from 'react'
 import AdminHeader from '@/components/admin/AdminHeader'
 import AdminSidebar from '@/components/admin/AdminSidebar'
@@ -12,41 +11,56 @@ import ContactManager from '@/components/admin/ContactManager'
 import HeroManager from '@/components/admin/HeroManager'
 import SettingsManager from '@/components/admin/SettingsManager'
 import { Lock } from 'lucide-react'
+import { auth } from '@/lib/firebase'
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth'
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [activeTab, setActiveTab] = useState('projects')
   const [error, setError] = useState('')
 
-  // Simple password protection (in production, use proper auth)
-  const ADMIN_PASSWORD = 'oneandonlyghost2304'
-
   useEffect(() => {
-    const isAuth = localStorage.getItem('admin_auth')
-    if (isAuth === 'true') {
-      setIsAuthenticated(true)
-    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuthenticated(true)
+      } else {
+        setIsAuthenticated(false)
+      }
+      setIsLoading(false)
+    })
+    return () => unsubscribe()
   }, [])
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password === ADMIN_PASSWORD) {
-      setIsAuthenticated(true)
-      localStorage.setItem('admin_auth', 'true')
+    setError('')
+    try {
+      await signInWithEmailAndPassword(auth, email, password)
+      setEmail('')
       setPassword('')
-      setError('')
-    } else {
-      setError('Incorrect password')
-      setPassword('')
+    } catch (err: any) {
+      setError(err.message || 'Failed to login')
     }
   }
 
-  const handleLogout = () => {
-    setIsAuthenticated(false)
-    localStorage.removeItem('admin_auth')
-    setPassword('')
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+    } catch (err) {
+      console.error("Failed to log out", err)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+      </div>
+    )
   }
 
   if (!isAuthenticated) {
@@ -70,6 +84,20 @@ export default function AdminPage() {
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter admin email"
+                  className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-accent transition-colors"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Password
                 </label>
                 <input
@@ -78,6 +106,7 @@ export default function AdminPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter admin password"
                   className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-accent transition-colors"
+                  required
                 />
               </div>
 
@@ -107,7 +136,7 @@ export default function AdminPage() {
 
             <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
               <p className="text-xs text-foreground/70">
-                <span className="font-medium text-blue-600 dark:text-blue-400">Demo:</span> This is a password-protected admin panel. Update the password in the settings.
+                <span className="font-medium text-blue-600 dark:text-blue-400">Security Notice:</span> Make sure your email and password match your Firebase account credentials.
               </p>
             </div>
           </div>

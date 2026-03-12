@@ -1,10 +1,11 @@
 'use client'
 
-import React from "react"
-
-import { useState } from 'react'
+import React, { useState, useEffect } from "react"
 import { projects, Project } from '@/lib/projects'
-import { Plus, Edit2, Trash2, Github, ExternalLink, X, ChevronDown } from 'lucide-react'
+import { Plus, Edit2, Trash2, Github, ExternalLink, X, Loader2, UploadCloud } from 'lucide-react'
+import { db, storage } from '@/lib/firebase'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 export default function ProjectsManager() {
   const [projectsList, setProjectsList] = useState<Project[]>(projects)
@@ -12,6 +13,30 @@ export default function ProjectsManager() {
   const [formData, setFormData] = useState<Partial<Project>>({})
   const [showForm, setShowForm] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const docRef = doc(db, 'portfolio', 'projects')
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists()) {
+           const data = docSnap.data().list
+           if (data && Array.isArray(data)) {
+             setProjectsList(data)
+           }
+        }
+      } catch (error) {
+        console.error("Error fetching projects:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchProjects()
+  }, [])
+
 
   const handleEdit = (project: Project) => {
     setEditingId(project.id)
@@ -19,29 +44,66 @@ export default function ProjectsManager() {
     setShowForm(true)
   }
 
-  const handleDelete = (id: number) => {
-    setProjectsList(projectsList.filter((p) => p.id !== id))
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    try {
+      const storageRef = ref(storage, `portfolio/projects/${Date.now()}_${file.name}`)
+      await uploadBytes(storageRef, file)
+      const url = await getDownloadURL(storageRef)
+      setFormData(prev => ({ ...prev, image: url }))
+    } catch (error) {
+      console.error("Error uploading image:", error)
+      alert("Failed to upload image")
+    } finally {
+      setIsUploading(false)
+    }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (editingId) {
-      setProjectsList(
-        projectsList.map((p) =>
-          p.id === editingId ? { ...p, ...formData } : p
-        )
-      )
-    } else {
-      const newProject = {
-        ...formData,
-        id: Math.max(...projectsList.map((p) => p.id), 0) + 1,
-        slug: (formData.title || '').toLowerCase().replace(/\s+/g, '-'),
-      } as Project
-      setProjectsList([...projectsList, newProject])
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this project?")) return
+    setIsSaving(true)
+    try {
+      const newList = projectsList.filter((p) => p.id !== id)
+      await setDoc(doc(db, 'portfolio', 'projects'), { list: newList })
+      setProjectsList(newList)
+    } catch (error) {
+      console.error("Error deleting project:", error)
+      alert("Failed to delete project")
     }
-    setShowForm(false)
-    setEditingId(null)
-    setFormData({})
+    setIsSaving(false)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSaving(true)
+    try {
+      let newList: Project[]
+      if (editingId) {
+        newList = projectsList.map((p) =>
+          p.id === editingId ? { ...p, ...formData } as Project : p
+        )
+      } else {
+        const newProject = {
+          ...formData,
+          id: Math.max(...projectsList.map((p) => p.id), 0) + 1,
+          slug: (formData.title || '').toLowerCase().replace(/\s+/g, '-'),
+        } as Project
+        newList = [...projectsList, newProject]
+      }
+      
+      await setDoc(doc(db, 'portfolio', 'projects'), { list: newList })
+      setProjectsList(newList)
+      setShowForm(false)
+      setEditingId(null)
+      setFormData({})
+    } catch (error) {
+      console.error("Error saving project:", error)
+      alert("Failed to save project")
+    }
+    setIsSaving(false)
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -60,10 +122,15 @@ export default function ProjectsManager() {
 
   return (
     <div className="space-y-6">
+      {isLoading && (
+        <div className="text-foreground/50 flex py-4 items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading Projects...
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-foreground">Projects Manager</h2>
-          <p className="text-foreground/60 mt-1">Manage your 15 completed projects</p>
+          <p className="text-foreground/60 mt-1">Manage your active projects</p>
         </div>
         <button
           onClick={() => {
@@ -122,6 +189,20 @@ export default function ProjectsManager() {
                 <option value="ai">AI</option>
                 <option value="mobile">Mobile</option>
               </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-foreground">Project Image</label>
+              <div className="flex items-center gap-4">
+                {formData.image && (
+                  <img src={formData.image} alt="Preview" className="w-16 h-16 object-cover rounded border border-border" />
+                )}
+                <label className={`flex items-center gap-2 px-4 py-2 bg-background border border-border rounded-lg text-foreground cursor-pointer hover:border-accent transition-colors ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                  {isUploading ? 'Uploading...' : 'Upload Image'}
+                  <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={isUploading} />
+                </label>
+              </div>
             </div>
 
             <textarea
@@ -211,12 +292,15 @@ export default function ProjectsManager() {
             <div className="flex gap-2 pt-4">
               <button
                 type="submit"
-                className="px-6 py-2 bg-accent text-primary rounded-lg hover:opacity-90 transition-opacity font-medium"
+                disabled={isSaving}
+                className="px-6 py-2 bg-accent text-primary rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center gap-2"
               >
+                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {editingId ? 'Update' : 'Add'} Project
               </button>
               <button
                 type="button"
+                disabled={isSaving}
                 onClick={() => {
                   setShowForm(false)
                   setEditingId(null)

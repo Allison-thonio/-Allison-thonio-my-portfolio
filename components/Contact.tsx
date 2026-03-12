@@ -3,9 +3,11 @@
 import React from "react"
 
 import { useState } from 'react'
-import { Mail, Phone, MessageCircle, Instagram, Github, Linkedin, Twitter } from 'lucide-react'
-import { contactInfo } from '@/lib/projects'
-import { analytics, logEvent } from '@/lib/firebase'
+import { Mail, Phone, MessageCircle, Instagram, Github, Linkedin, Twitter, Loader2 } from 'lucide-react'
+import { contactInfo as staticContactInfo } from '@/lib/projects'
+import { analytics, logEvent, db } from '@/lib/firebase'
+import { useEffect } from 'react'
+import { doc, getDoc } from 'firebase/firestore'
 
 export default function Contact() {
   const [formState, setFormState] = useState({
@@ -16,6 +18,25 @@ export default function Contact() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [contactInfo, setContactInfo] = useState(staticContactInfo)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchContactInfo = async () => {
+      try {
+        const docRef = doc(db, 'portfolio', 'contact')
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists()) {
+          setContactInfo(docSnap.data() as typeof staticContactInfo)
+        }
+      } catch (error) {
+        console.error("Error fetching contact info:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchContactInfo()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -97,6 +118,12 @@ export default function Contact() {
             Have a project in mind or just want to chat? I'd love to hear from you. Feel free to reach out!
           </p>
         </div>
+        
+        {isLoading && (
+          <div className="text-foreground/50 flex py-4 items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading Contact Info...
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
           {/* Contact Form */}

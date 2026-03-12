@@ -1,12 +1,36 @@
 'use client'
 
-import { ExternalLink, Github, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { ExternalLink, Github, ChevronRight, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { projects } from '@/lib/projects'
+import { projects as initialProjects, Project } from '@/lib/projects'
+import { db } from '@/lib/firebase'
+import { doc, getDoc } from 'firebase/firestore'
 
 export default function Projects() {
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [projectsList, setProjectsList] = useState<Project[]>(initialProjects)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const docRef = doc(db, 'portfolio', 'projects')
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists()) {
+           const data = docSnap.data().list
+           if (data && Array.isArray(data)) {
+             setProjectsList(data)
+           }
+        }
+      } catch (error) {
+        console.error("Error fetching projects:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchProjects()
+  }, [])
 
   const categories = [
     { id: 'all', label: 'All Projects (15)' },
@@ -19,8 +43,8 @@ export default function Projects() {
 
   const filteredProjects =
     selectedCategory === 'all'
-      ? projects
-      : projects.filter((p) => p.category === selectedCategory)
+      ? projectsList
+      : projectsList.filter((p) => p.category === selectedCategory)
 
   return (
     <section className="py-16 md:py-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -30,9 +54,15 @@ export default function Projects() {
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground">Featured Projects</h2>
           <div className="w-12 h-1 bg-accent rounded-full" />
           <p className="text-base md:text-lg text-foreground/70 max-w-2xl">
-            15 completed projects showcasing full-stack development, AI integration, and legal tech solutions. 150K+ lines of code across 4+ years.
+            {projectsList.length} completed projects showcasing full-stack development, AI integration, and legal tech solutions.
           </p>
         </div>
+        
+        {isLoading && (
+          <div className="text-foreground/50 flex py-4 items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading Projects...
+          </div>
+        )}
 
         {/* Category Filter */}
         <div className="flex flex-wrap gap-2">

@@ -1,7 +1,29 @@
 'use client'
 import { siteConfig } from '@/lib/projects'
+import { useEffect, useState } from 'react'
 
 export default function About() {
+  const [imageUrl, setImageUrl] = useState(siteConfig.hero.mainImage)
+  const [linesOfCode, setLinesOfCode] = useState(siteConfig.hero.linesOfCode)
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const { doc, getDoc } = await import('firebase/firestore')
+        const { db } = await import('@/lib/firebase')
+        const docSnap = await getDoc(doc(db, 'portfolio', 'hero'))
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          if (data.mainImage) setImageUrl(data.mainImage)
+          if (data.linesOfCode) setLinesOfCode(data.linesOfCode)
+        }
+      } catch (error) {
+        console.error("Error fetching about config:", error)
+      }
+    }
+    fetchConfig()
+  }, [])
+
   const skills = [
     { category: 'Frontend', items: ['React', 'Next.js', 'TypeScript', 'Tailwind CSS', 'Vue.js'] },
     { category: 'Backend', items: ['Node.js', 'Python', 'PostgreSQL', 'MongoDB', 'REST APIs'] },
@@ -35,7 +57,7 @@ export default function About() {
                 {/* Photo */}
                 <div className="aspect-[3/4] overflow-hidden">
                   <img
-                    src={siteConfig.hero.mainImage}
+                    src={imageUrl}
                     alt="Allison Anthonio — Full Stack Developer"
                     className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                   />
@@ -93,7 +115,7 @@ export default function About() {
                 <p className="text-xs md:text-sm text-muted-foreground">Years Experience</p>
               </div>
               <div className="p-4 md:p-6 rounded-lg bg-card border border-border hover:border-accent/50 transition-colors text-center">
-                <div className="text-2xl md:text-3xl font-bold text-accent mb-1">{siteConfig.hero.linesOfCode}</div>
+                <div className="text-2xl md:text-3xl font-bold text-accent mb-1">{linesOfCode}</div>
                 <p className="text-xs md:text-sm text-muted-foreground">Lines of Code</p>
               </div>
             </div>

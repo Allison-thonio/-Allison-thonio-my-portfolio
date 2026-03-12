@@ -37,7 +37,8 @@ function roundRect(
 /** Draw the portfolio preview onto a canvas */
 function drawPortfolioScreen(
   canvas: HTMLCanvasElement,
-  profileImg: HTMLImageElement | null
+  profileImg: HTMLImageElement | null,
+  lines: string = '150K+'
 ) {
   const ctx = canvas.getContext('2d')!
   const W = canvas.width
@@ -160,7 +161,7 @@ function drawPortfolioScreen(
   const stats = [
     { value: '15', label: 'Projects' },
     { value: '4+', label: 'Years Exp.' },
-    { value: '150K', label: 'Lines' },
+    { value: lines.replace('+', ''), label: 'Lines' },
   ]
   const colW = (W - PAD * 2) / 3
 
@@ -224,21 +225,43 @@ export default function LaptopModel({ mouseX, mouseY }: LaptopModelProps) {
     const screenCanvas = document.createElement('canvas')
     screenCanvas.width = 640
     screenCanvas.height = 400
-    drawPortfolioScreen(screenCanvas, null)
+    drawPortfolioScreen(screenCanvas, null, siteConfig.hero.linesOfCode)
     const screenTexture = new THREE.CanvasTexture(screenCanvas)
     return { screenCanvas, screenTexture }
   }, [])
 
   // Async-load profile photo → redraw canvas
   useEffect(() => {
-    const img = new window.Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => {
-      drawPortfolioScreen(screenCanvas, img)
-      screenTexture.needsUpdate = true
+    const fetchConfigAndDraw = async () => {
+      let imageUrl = siteConfig.hero.mainImage
+      let lines = siteConfig.hero.linesOfCode
+      
+      try {
+        const { doc, getDoc } = await import('firebase/firestore')
+        const { db } = await import('@/lib/firebase')
+        const docSnap = await getDoc(doc(db, 'portfolio', 'hero'))
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          if (data.mainImage) imageUrl = data.mainImage
+          if (data.linesOfCode) lines = data.linesOfCode
+        }
+      } catch (error) {
+        console.error("Error fetching hero config for LaptopModel:", error)
+      }
+
+      // We technically should pass lines to drawPortfolioScreen, but let's keep it simple
+      // and draw the image.
+      const img = new window.Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        drawPortfolioScreen(screenCanvas, img, lines)
+        screenTexture.needsUpdate = true
+      }
+      img.onerror = () => {} // keep placeholder on failure
+      img.src = imageUrl
     }
-    img.onerror = () => {} // keep placeholder on failure
-    img.src = siteConfig.hero.mainImage
+    
+    fetchConfigAndDraw()
   }, [screenCanvas, screenTexture])
 
   // Materials
