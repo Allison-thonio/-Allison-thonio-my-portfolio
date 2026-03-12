@@ -200,7 +200,7 @@ export default function ProjectsManager() {
                 <label className={`flex items-center gap-2 px-4 py-2 bg-background border border-border rounded-lg text-foreground cursor-pointer hover:border-accent transition-colors ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
                   {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
                   {isUploading ? 'Uploading...' : 'Upload Image'}
-                  <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={isUploading} />
+                  <input type="file" className="hidden" accept="image/*,.heic,.heif" onChange={handleFileUpload} disabled={isUploading} />
                 </label>
               </div>
             </div>

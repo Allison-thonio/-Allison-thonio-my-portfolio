@@ -43,7 +43,13 @@ export default function AdminPage() {
       setEmail('')
       setPassword('')
     } catch (err: any) {
-      setError(err.message || 'Failed to login')
+      if (err.code === 'auth/configuration-not-found') {
+        setError('Firebase Error: Email/Password authentication is not enabled. Go to your Firebase Console -> Authentication -> Sign-in method -> Enable "Email/Password".')
+      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
+        setError('Invalid credentials. Make sure you have created your admin user in the Firebase Console under Authentication -> Users.')
+      } else {
+        setError(err.message || 'Failed to login')
+      }
     }
   }
 

@@ -74,6 +74,7 @@ export default function HeroManager() {
                 }
             } catch (error) {
                 console.error("Error uploading image:", error)
+                alert("Upload failed. Please check your Firebase Storage Security Rules.")
                 if (target === 'main') {
                    setIsUploading(prev => ({...prev, main: false}))
                 } else {
@@ -133,7 +134,7 @@ export default function HeroManager() {
                                 <label className="cursor-pointer bg-accent text-primary px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:scale-105 transition-transform">
                                     <Upload className="w-4 h-4" />
                                     Replace Photo
-                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'main')} disabled={isUploading.main} />
+                                    <input type="file" accept="image/*,.heic,.heif" className="hidden" onChange={(e) => handleFileUpload(e, 'main')} disabled={isUploading.main} />
                                 </label>
                             )}
                         </div>
@@ -186,7 +187,7 @@ export default function HeroManager() {
                                                 ) : (
                                                     <>
                                                         <Upload className="w-4 h-4 text-white" />
-                                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, i)} disabled={isUploading[i]} />
+                                                        <input type="file" accept="image/*,.heic,.heif" className="hidden" onChange={(e) => handleFileUpload(e, i)} disabled={isUploading[i]} />
                                                     </>
                                                 )}
                                             </label>
