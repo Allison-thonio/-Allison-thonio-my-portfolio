@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { Moon, Sun, Home, User, Briefcase, Scale, Mail } from 'lucide-react'
 import { TubelightNavBar } from '@/components/ui/tubelight-navbar'
 
+import { useTheme } from 'next-themes'
+
 interface HeaderProps {
   activeSection?: string
   setActiveSection?: (section: string) => void
@@ -18,27 +20,15 @@ const navItems = [
 ]
 
 export default function Header({ activeSection = 'home', setActiveSection }: HeaderProps) {
-  const [isDark, setIsDark] = useState(false)
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem('theme')
-    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.documentElement.classList.add('dark')
-      setIsDark(true)
-    }
+    setMounted(true)
   }, [])
 
   const toggleTheme = () => {
-    const html = document.documentElement
-    if (html.classList.contains('dark')) {
-      html.classList.remove('dark')
-      setIsDark(false)
-      localStorage.setItem('theme', 'light')
-    } else {
-      html.classList.add('dark')
-      setIsDark(true)
-      localStorage.setItem('theme', 'dark')
-    }
+    setTheme(theme === 'dark' ? 'light' : 'dark')
   }
 
   const scrollToSection = (id: string) => {

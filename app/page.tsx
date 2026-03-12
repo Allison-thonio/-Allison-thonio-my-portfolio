@@ -8,7 +8,6 @@ import Projects from '@/components/Projects'
 import LawJourney from '@/components/LawJourney'
 import Contact from '@/components/Contact'
 import Footer from '@/components/Footer'
-import { ThemeProvider } from '@/components/ThemeProvider'
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState('home')
@@ -56,35 +55,33 @@ export default function Home() {
   }, [])
 
   return (
-    <ThemeProvider>
-      <div className="bg-background text-foreground min-h-screen">
-        <Header activeSection={activeSection} setActiveSection={setActiveSection} />
+    <div className="bg-background text-foreground min-h-screen">
+      <Header activeSection={activeSection} setActiveSection={setActiveSection} />
 
-        <main>
-          <section id="home">
-            <Hero />
-          </section>
+      <main>
+        <section id="home">
+          <Hero />
+        </section>
 
-          <section id="about">
-            <About />
-          </section>
+        <section id="about">
+          <About />
+        </section>
 
-          <section id="projects">
-            <Projects />
-          </section>
+        <section id="projects">
+          <Projects />
+        </section>
 
-          <section id="law-journey">
-            <LawJourney />
-          </section>
+        <section id="law-journey">
+          <LawJourney />
+        </section>
 
-          <section id="contact">
-            <Contact />
-          </section>
-        </main>
+        <section id="contact">
+          <Contact />
+        </section>
+      </main>
 
-        <Footer />
-      </div>
-    </ThemeProvider>
+      <Footer />
+    </div>
   )
 }
 

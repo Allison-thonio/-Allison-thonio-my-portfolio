@@ -5,6 +5,7 @@ import React from "react"
 import { useState } from 'react'
 import { Mail, Phone, MessageCircle, Instagram, Github, Linkedin, Twitter } from 'lucide-react'
 import { contactInfo } from '@/lib/projects'
+import { analytics, logEvent } from '@/lib/firebase'
 
 export default function Contact() {
   const [formState, setFormState] = useState({
@@ -20,9 +21,25 @@ export default function Contact() {
     e.preventDefault()
     setIsSubmitting(true)
 
+    // Log the initiation of form submission
+    if (analytics) {
+      logEvent(analytics, 'contact_form_submit_start', {
+        subject: formState.subject
+      });
+    }
+
     // Simulate form submission
     setTimeout(() => {
       setSubmitStatus('success')
+      
+      // Log successful form submission
+      if (analytics) {
+        logEvent(analytics, 'contact_form_submit_success', {
+          subject: formState.subject,
+          email: formState.email
+        });
+      }
+
       setFormState({ name: '', email: '', subject: '', message: '' })
       setIsSubmitting(false)
 
